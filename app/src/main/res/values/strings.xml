@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Archiver Companion</string>
+    <string name="channel_service_name">Companion</string>
+    <string name="channel_service_desc">Keeps this phone reachable by your computers.</string>
+</resources>

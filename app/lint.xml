@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Bouncy Castle ships a permissive trust manager in a code path this app never
+         reaches: certificates here are built and parsed, never validated by it. -->
+    <issue id="TrustAllX509TrustManager">
+        <ignore path="**/bcpkix-jdk18on*.jar" />
+        <ignore path="**/bcprov-jdk18on*.jar" />
+    </issue>
+</lint>

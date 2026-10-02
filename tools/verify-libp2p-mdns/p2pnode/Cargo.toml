@@ -1,0 +1,13 @@
+[package]
+name = "p2pnode"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+# What the desktop runs: libp2p 0.56 (../archiverclient/Cargo.toml), and the
+# exact libp2p-mdns its Cargo.lock resolves to, because the answer's wire format
+# is the thing under test. Move both when the desktop moves.
+libp2p = { version = "0.56", features = ["mdns", "tokio", "tcp", "noise", "yamux"] }
+libp2p-mdns = "=0.48.0"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util"] }

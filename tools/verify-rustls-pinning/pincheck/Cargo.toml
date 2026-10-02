@@ -1,0 +1,10 @@
+[package]
+name = "pincheck"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+# The same major version the desktop pins in ../archiverclient/Cargo.toml, so
+# this exercises the rustls the desktop will actually be running.
+ureq = { version = "3", features = ["json"] }
