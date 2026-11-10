@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -26,6 +27,19 @@ interface PeerDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun put(peer: Peer)
+
+    @Query("DELETE FROM peers")
+    suspend fun forgetAll()
+
+    /**
+     * Pair with [peer] and nobody else: a phone serves one computer at a time.
+     * One transaction, so the phone is never left with both, or with neither.
+     */
+    @Transaction
+    suspend fun pairWith(peer: Peer) {
+        forgetAll()
+        put(peer)
+    }
 
     /**
      * Accepted: wherever it was, and however long it had been refusing, that is

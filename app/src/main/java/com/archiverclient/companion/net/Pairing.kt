@@ -18,6 +18,9 @@ import java.io.IOException
  *
  * The desktop gives us three minutes and will only accept one answer, so a
  * failure here means showing a fresh code rather than trying again.
+ *
+ * A phone serves one computer at a time, so a pairing that succeeds replaces
+ * whichever computer the phone had.
  */
 class Pairing(private val context: Context) {
 
@@ -77,7 +80,9 @@ class Pairing(private val context: Context) {
             // it will fetch from until something tells it otherwise.
             lastHelloFrom = answer.from,
         )
-        db.peers().put(peer)
+        // Only now that the desktop has accepted us does the computer we had go: a
+        // pairing that fails leaves the phone with the one it had.
+        db.peers().pairWith(peer)
         Outcome.Paired(peer)
     }
 

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -68,6 +69,10 @@ private fun CompanionScreen(model: CompanionViewModel = viewModel()) {
     var access by remember { mutableStateOf(MediaAccess.of(context)) }
     var scanning by remember { mutableStateOf(false) }
     var typed by remember { mutableStateOf("") }
+    // A pairing waiting on the user's word, because it would replace the computer
+    // this phone already has.
+    var confirm by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val askBeforeReplacing = { go: () -> Unit -> if (peers.isEmpty()) go() else confirm = go }
 
     val ask = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -90,8 +95,8 @@ private fun CompanionScreen(model: CompanionViewModel = viewModel()) {
     ) {
         Text("Archiver Companion", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "This phone offers its photos and videos to the computers you pair it with. " +
-                "They come and take copies; nothing is uploaded anywhere else.",
+            "This phone offers its photos and videos to the computer you pair it with. " +
+                "It comes and takes copies; nothing is uploaded anywhere else.",
             style = MaterialTheme.typography.bodyMedium,
         )
 
@@ -129,6 +134,28 @@ private fun CompanionScreen(model: CompanionViewModel = viewModel()) {
             return@Column
         }
 
+        confirm?.let { proceed ->
+            AlertDialog(
+                onDismissRequest = { confirm = null },
+                title = { Text("Replace the paired computer?") },
+                text = {
+                    Text(
+                        "This phone works with one computer at a time. The one it is " +
+                            "paired with now will stop collecting from it."
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        confirm = null
+                        proceed()
+                    }) { Text("Replace") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirm = null }) { Text("Cancel") }
+                },
+            )
+        }
+
         if (scanning) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -157,7 +184,7 @@ private fun CompanionScreen(model: CompanionViewModel = viewModel()) {
 
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Computers", style = MaterialTheme.typography.titleMedium)
+                Text("Computer", style = MaterialTheme.typography.titleMedium)
                 if (peers.isEmpty()) {
                     Text(
                         "None yet. On the computer, add a phone source and choose " +
@@ -194,8 +221,8 @@ private fun CompanionScreen(model: CompanionViewModel = viewModel()) {
                         }
                     }
                 }
-                Button(onClick = { camera.launch(Manifest.permission.CAMERA) }) {
-                    Text(if (peers.isEmpty()) "Pair with a computer" else "Pair another")
+                Button(onClick = { askBeforeReplacing { camera.launch(Manifest.permission.CAMERA) } }) {
+                    Text(if (peers.isEmpty()) "Pair with a computer" else "Pair with a different computer")
                 }
             }
         }
@@ -238,8 +265,10 @@ private fun CompanionScreen(model: CompanionViewModel = viewModel()) {
                 OutlinedButton(
                     enabled = typed.isNotBlank() && !pairing.busy,
                     onClick = {
-                        model.pair(typed.trim())
-                        typed = ""
+                        askBeforeReplacing {
+                            model.pair(typed.trim())
+                            typed = ""
+                        }
                     },
                 ) { Text("Pair") }
             }

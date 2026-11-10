@@ -6,6 +6,10 @@ background, pairs with a desktop node by QR code, announces itself on the local
 network, and serves its camera roll over the HTTP interface the desktop already
 expects.
 
+A phone serves one computer at a time. Pairing with another replaces it, after a
+confirmation, and only once the new computer has accepted the phone: a pairing
+that fails leaves the phone with the computer it had.
+
 Nothing is uploaded anywhere. The desktop connects to the phone and pulls.
 
 ## How it fits together
@@ -58,8 +62,9 @@ to announce.
 | Our address changed since a computer last heard from us | Tell that computer, even when otherwise silent, at every recompute until it answers — it fetches from where it last heard us. |
 | A computer turns the phone away (`403`) | Keep announcing. Believed after 3 refusals in a row spanning an hour, then silent towards it until paired again. |
 
-Staleness is measured against the *least* recently served computer, so a laptop
-collecting daily does not keep the phone quiet for a desktop that has not.
+Staleness is measured against the *least* recently served computer. That only
+matters to a phone still holding several from before it served one at a time;
+its next pairing leaves it with one.
 
 Announcements above that floor are events, not ticks: wifi arriving, our address
 changing, a computer asking for a file, new media, a fresh pairing. Each wakes the loop to recompute;
@@ -184,7 +189,7 @@ of it agrees.
 net/     identity and certificates, the HTTPS server, pairing,
          the heartbeat and its policy, finding a moved computer
 media/   the MediaStore walk, the extension filter, MD5
-data/    Room: the index and the paired computers
+data/    Room: the index and the paired computer
 work/    WorkManager: indexing, hashing, the watchdog, the network wake
 service/ the foreground service and what keeps it alive
 ui/      pairing, status, permissions
