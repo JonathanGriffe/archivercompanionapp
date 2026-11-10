@@ -16,12 +16,16 @@ import androidx.sqlite.execSQL
  *
  * - 2: `peers.refusals` and `peers.refusedSince`, so one `403` no longer
  *   revokes a pairing on its own; and every video hashed again — see [To2].
+ * - 3: `peers.lastHelloFrom`, so a computer is told when our address changes.
  */
 @Database(
     entities = [MediaItem::class, Peer::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2, spec = AppDatabase.To2::class)],
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2, spec = AppDatabase.To2::class),
+        AutoMigration(from = 2, to = 3),
+    ],
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun media(): MediaDao

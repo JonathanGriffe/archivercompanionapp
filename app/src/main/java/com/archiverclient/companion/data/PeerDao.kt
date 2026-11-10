@@ -27,15 +27,18 @@ interface PeerDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun put(peer: Peer)
 
-    /** Accepted: wherever it was, and however long it had been refusing, that is over. */
+    /**
+     * Accepted: wherever it was, and however long it had been refusing, that is
+     * over — and it now knows us at [from].
+     */
     @Query(
         """
         UPDATE peers SET lastAddress = :address, lastPort = :port, lastHelloAt = :at,
-            lastHelloOk = 1, revoked = 0, refusals = 0, refusedSince = 0
+            lastHelloOk = 1, revoked = 0, refusals = 0, refusedSince = 0, lastHelloFrom = :from
         WHERE token = :token
         """
     )
-    suspend fun recordHello(token: String, address: String, port: Int, at: Long)
+    suspend fun recordHello(token: String, address: String, port: Int, at: Long, from: String)
 
     /** Nobody answered. Says nothing about a run of refusals either way, so leaves it be. */
     @Query("UPDATE peers SET lastHelloAt = :at, lastHelloOk = 0 WHERE token = :token")

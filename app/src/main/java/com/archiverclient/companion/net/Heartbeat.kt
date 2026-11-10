@@ -42,6 +42,10 @@ class Heartbeat(
          * is a cheaper way to find out than remembering.
          */
         fun onWifi(): Boolean
+
+        /** Every IPv4 address we hold on wifi right now. Empty off wifi. */
+        fun wifiAddresses(): Set<String>
+
         fun now(): Long = System.currentTimeMillis()
     }
 
@@ -92,7 +96,11 @@ class Heartbeat(
 
             when (val decision = HeartbeatPolicy.decide(state)) {
                 is HeartbeatPolicy.Decision.Dormant -> {
-                    lastOutcome = "nothing to announce"
+                    // Quiet — except towards a computer still fetching from an address we
+                    // have left, which would otherwise wait out a whole scan cycle.
+                    val here = if (state.onWifi) conditions.wifiAddresses() else emptySet()
+                    val moved = peers.filter { HeartbeatPolicy.mustTell(here, it.lastHelloFrom) }
+                    if (moved.isEmpty()) lastOutcome = "nothing to announce" else announce(moved)
                     // A null recheck means only an event can change the answer, so we
                     // wait for one. Otherwise we also wake when the reason expires.
                     //
@@ -217,18 +225,17 @@ class Heartbeat(
      * [Dispatchers.IO] for that reason.
      */
     private suspend fun say(peer: Peer, address: String, body: String): Reply = try {
-        when (
-            val status = NodeClient.post(
-                host = address,
-                port = peer.lastPort,
-                path = "/v1/hello",
-                body = body,
-                fingerprintHex = peer.certFingerprint,
-                expectedName = peer.certName,
-            )
-        ) {
+        val answer = NodeClient.post(
+            host = address,
+            port = peer.lastPort,
+            path = "/v1/hello",
+            body = body,
+            fingerprintHex = peer.certFingerprint,
+            expectedName = peer.certName,
+        )
+        when (val status = answer.status) {
             204 -> {
-                db.peers().recordHello(peer.token, address, peer.lastPort, conditions.now())
+                db.peers().recordHello(peer.token, address, peer.lastPort, conditions.now(), answer.from)
                 Reply.Accepted
             }
             403 -> {

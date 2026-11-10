@@ -94,6 +94,29 @@ object HeartbeatPolicy {
         return Decision.Announce(POLL_MS)
     }
 
+    /**
+     * Whether a computer has to be told where we are, even while [decide] says
+     * to keep quiet.
+     *
+     * The desktop learns the phone's address only from the socket a hello or a
+     * pairing arrives on, and fetches from it until the next one. Keeping quiet
+     * after being collected from assumes that address still holds. Once it does
+     * not — a router rebooted, a lease changed, a randomised MAC reconnected —
+     * the desktop's downloads go to where we were, fail three times an hour
+     * apart, and wait for the next scan cycle, up to sixteen hours away.
+     *
+     * So a computer that last heard from an address we no longer have is told,
+     * and told again at every recompute until it hears: events, and the
+     * watchdog's quarter hour. A computer that is away meanwhile is tried about
+     * as often as [POLL_MS] would, and only until it answers or its cycle is up
+     * anyway. [here] is every IPv4 address we hold on wifi, compared as a set
+     * because a hello leaves from whichever the kernel picks. An unknown
+     * [lastHelloFrom] — a pairing made before it was recorded — counts as
+     * different, and the first hello sets it.
+     */
+    fun mustTell(here: Set<String>, lastHelloFrom: String): Boolean =
+        here.isNotEmpty() && lastHelloFrom !in here
+
     /** Refusals in a row before a computer is taken at its word. */
     const val REFUSALS_TO_REVOKE = 3
 

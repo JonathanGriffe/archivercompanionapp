@@ -45,4 +45,12 @@ data class Peer(
     /** When the current run of [refusals] began. Nought when there is none. */
     @ColumnInfo(defaultValue = "0")
     val refusedSince: Long = 0,
+    /**
+     * Our own IPv4 address when this computer last heard from us: the source of
+     * the last hello it accepted, or of the pairing. It reads where we are from
+     * that socket and nowhere else, so while this is not one of our addresses,
+     * it is fetching from somewhere we no longer are. Empty when not known.
+     */
+    @ColumnInfo(defaultValue = "")
+    val lastHelloFrom: String = "",
 )

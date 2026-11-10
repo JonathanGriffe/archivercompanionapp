@@ -194,4 +194,30 @@ class HeartbeatPolicyTest {
         assertFalse(run.revoke)
         assertTrue(HeartbeatPolicy.refused(before = 2, since = 0, now = 48 * hour).revoke)
     }
+
+    @Test
+    fun `a computer that heard from where we still are is left in peace`() {
+        assertFalse(HeartbeatPolicy.mustTell(setOf("192.168.1.140"), "192.168.1.140"))
+    }
+
+    @Test
+    fun `a computer that heard from where we no longer are is told`() {
+        assertTrue(HeartbeatPolicy.mustTell(setOf("192.168.1.141"), "192.168.1.140"))
+    }
+
+    @Test
+    fun `any of our addresses will do, since a hello leaves from whichever the kernel picks`() {
+        assertFalse(HeartbeatPolicy.mustTell(setOf("192.168.1.141", "10.0.0.7"), "10.0.0.7"))
+    }
+
+    @Test
+    fun `off wifi nobody is told anything`() {
+        assertFalse(HeartbeatPolicy.mustTell(emptySet(), "192.168.1.140"))
+        assertFalse(HeartbeatPolicy.mustTell(emptySet(), ""))
+    }
+
+    @Test
+    fun `a pairing from before this was recorded is told once, which records it`() {
+        assertTrue(HeartbeatPolicy.mustTell(setOf("192.168.1.140"), ""))
+    }
 }

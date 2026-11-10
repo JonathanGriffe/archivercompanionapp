@@ -2,10 +2,12 @@ package com.archiverclient.companion.service
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import com.archiverclient.companion.net.Heartbeat
+import java.net.Inet4Address
 
 /**
  * The Android half of what the heartbeat policy needs to know.
@@ -33,6 +35,10 @@ class NetworkConditions(
     @Volatile
     private var wifiNetwork: Network? = null
 
+    /** The IPv4 addresses last seen on wifi, so that only a change in them wakes anybody. */
+    @Volatile
+    private var seenAddresses: Set<String> = emptySet()
+
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             wifiNetwork = network
@@ -40,6 +46,23 @@ class NetworkConditions(
         }
 
         override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = refresh()
+
+        /**
+         * Our address changing, as it happens: a lease that moved on the same
+         * network, or — just after `onAvailable` — a reconnect's first addresses.
+         *
+         * IPv4 only. IPv6 privacy addresses rotate routinely, and the desktop is
+         * dialled at an IPv4 address, so it only ever sees us at one of those.
+         * The nudge only wakes the loop: whether anybody is told is the policy's
+         * call, made against [wifiAddresses].
+         */
+        override fun onLinkPropertiesChanged(network: Network, link: LinkProperties) {
+            val now = ipv4(link)
+            if (now.isNotEmpty() && now != seenAddresses) {
+                seenAddresses = now
+                onChanged("our address changed")
+            }
+        }
 
         override fun onLost(network: Network) {
             if (wifiNetwork == network) wifiNetwork = null
@@ -80,6 +103,15 @@ class NetworkConditions(
     }
 
     override fun onWifi(): Boolean = wifi
+
+    /** Read afresh rather than remembered, so a callback that never came cannot make it stale. */
+    override fun wifiAddresses(): Set<String> {
+        val network = wifiNetwork() ?: return emptySet()
+        return connectivity.getLinkProperties(network)?.let(::ipv4).orEmpty()
+    }
+
+    private fun ipv4(link: LinkProperties): Set<String> =
+        link.linkAddresses.mapNotNull { (it.address as? Inet4Address)?.hostAddress }.toSet()
 
     /**
      * For sockets that must reach the local network and nowhere else: see

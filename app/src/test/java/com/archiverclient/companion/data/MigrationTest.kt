@@ -77,6 +77,7 @@ class MigrationTest {
             assertFalse(peer.revoked)
             assertEquals(0, peer.refusals)
             assertEquals(0L, peer.refusedSince)
+            assertEquals("unknown, so the first hello records it", "", peer.lastHelloFrom)
 
             val image = db.media().byId("external_primary:7")
             assertNotNull("and so did the index", image)
@@ -94,10 +95,39 @@ class MigrationTest {
         }
     }
 
-    /** A database as version 1 created it, filled by [fill]. */
-    private fun version1(fill: (SQLiteDatabase) -> Unit) {
-        val schema = JSONObject(schemaFile(1).readText()).getJSONObject("database")
-        assertEquals(1, schema.getInt("version"))
+    @Test
+    fun `version 2 keeps a run of refusals, and does not know where we were heard from`() = runBlocking {
+        version(2) { v2 ->
+            v2.execSQL(
+                """
+                INSERT INTO peers (token, nodeId, certFingerprint, certName, displayName,
+                    lastAddress, lastPort, pairedAt, lastHelloAt, lastHelloOk, lastInboundAt,
+                    revoked, refusals, refusedSince)
+                VALUES ('tok', '12D3KooW', 'ab12', 'f00d.node.archiverclient', 'f00d',
+                    '192.168.1.20', 8765, 1, 2, 0, 3, 0, 2, 1000)
+                """
+            )
+        }
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val peer = db.peers().byToken("tok")!!
+            assertEquals(2, peer.refusals)
+            assertEquals(1000L, peer.refusedSince)
+            assertEquals("", peer.lastHelloFrom)
+        } finally {
+            db.close()
+        }
+    }
+
+    private fun version1(fill: (SQLiteDatabase) -> Unit) = version(1, fill)
+
+    /** A database as [number] created it, filled by [fill]. */
+    private fun version(number: Int, fill: (SQLiteDatabase) -> Unit) {
+        val schema = JSONObject(schemaFile(number).readText()).getJSONObject("database")
+        assertEquals(number, schema.getInt("version"))
 
         val path = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
         SQLiteDatabase.openOrCreateDatabase(path, null).use { db ->
@@ -116,7 +146,7 @@ class MigrationTest {
             for (i in 0 until setup.length()) db.execSQL(setup.getString(i))
 
             fill(db)
-            db.version = 1
+            db.version = number
         }
     }
 

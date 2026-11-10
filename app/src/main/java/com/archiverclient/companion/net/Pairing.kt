@@ -45,7 +45,7 @@ class Pairing(private val context: Context) {
             put("cert", identity.certificatePem())
         }.toString()
 
-        val status = try {
+        val answer = try {
             NodeClient.post(
                 host = code.address,
                 port = code.port,
@@ -62,7 +62,7 @@ class Pairing(private val context: Context) {
             return@withContext Outcome.Unreachable("its certificate was not the one on screen")
         }
 
-        if (status != 204) return@withContext Outcome.Refused
+        if (answer.status != 204) return@withContext Outcome.Refused
 
         val peer = Peer(
             token = code.token,
@@ -73,6 +73,9 @@ class Pairing(private val context: Context) {
             lastAddress = code.address,
             lastPort = code.port,
             pairedAt = System.currentTimeMillis(),
+            // The desktop wrote down where the pairing came from, so that is where
+            // it will fetch from until something tells it otherwise.
+            lastHelloFrom = answer.from,
         )
         db.peers().put(peer)
         Outcome.Paired(peer)

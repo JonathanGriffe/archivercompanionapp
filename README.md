@@ -55,13 +55,14 @@ to announce.
 | A computer collected less than 16 h ago | Silent until that cycle is up. |
 | On wifi, and nothing has collected for 16 h | Announce every 15 minutes until one does. |
 | Freshly paired, never collected from | Announce — there is no deadline to wait out. |
+| Our address changed since a computer last heard from us | Tell that computer, even when otherwise silent, at every recompute until it answers — it fetches from where it last heard us. |
 | A computer turns the phone away (`403`) | Keep announcing. Believed after 3 refusals in a row spanning an hour, then silent towards it until paired again. |
 
 Staleness is measured against the *least* recently served computer, so a laptop
 collecting daily does not keep the phone quiet for a desktop that has not.
 
-Announcements above that floor are events, not ticks: wifi arriving, a computer
-asking for a file, new media, a fresh pairing. Each wakes the loop to recompute;
+Announcements above that floor are events, not ticks: wifi arriving, our address
+changing, a computer asking for a file, new media, a fresh pairing. Each wakes the loop to recompute;
 whether anything is sent is the policy's decision. The watchdog wakes it every
 quarter hour as well, because the loop's own timeout runs on a clock that stops
 while the phone sleeps.

@@ -2,6 +2,7 @@ package com.archiverclient.companion.net
 
 import java.io.BufferedInputStream
 import java.io.IOException
+import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.security.MessageDigest
@@ -68,8 +69,19 @@ object NodeClient {
             init(null, arrayOf<TrustManager>(Pinned(fingerprintHex)), null)
         }.socketFactory
 
+    /** What a computer answered, and the address it saw the question come from. */
+    data class Answer(
+        val status: Int,
+        /**
+         * Our end of the connection: the address the desktop takes the phone to
+         * be at, since it reads that off the socket and never off the body. Empty
+         * if it was not IPv4, which a desktop dialled at an IPv4 address never sees.
+         */
+        val from: String,
+    )
+
     /**
-     * `POST` one small JSON body and answer with the status code.
+     * `POST` one small JSON body.
      *
      * @throws IOException if the computer cannot be reached, or answers something
      *   that is not an HTTP status line.
@@ -81,13 +93,14 @@ object NodeClient {
         body: String,
         fingerprintHex: String,
         expectedName: String,
-    ): Int {
+    ): Answer {
         val bytes = body.toByteArray(Charsets.UTF_8)
         require(bytes.size <= 8 * 1024) { "the desktop refuses a body over 8 KiB" }
 
         val plain = Socket()
         plain.connect(InetSocketAddress(host, port), CONNECT_TIMEOUT_MS)
         plain.soTimeout = READ_TIMEOUT_MS
+        val from = (plain.localAddress as? Inet4Address)?.hostAddress.orEmpty()
 
         val socket = factory(fingerprintHex).createSocket(plain, host, port, true) as SSLSocket
         socket.use {
@@ -111,7 +124,7 @@ object NodeClient {
             out.write(bytes)
             out.flush()
 
-            return status(BufferedInputStream(it.inputStream))
+            return Answer(status(BufferedInputStream(it.inputStream)), from)
         }
     }
 
